@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Memory Game</h1>
+    <div id="game-board"></div>
+    <div id="cauldron-container">
+        <img id="cauldron" src="https://courses.howcanisay.com.br/wp-content/uploads/2024/05/caldron.png" alt="Cauldron">
+    </div>
+    <div class="score">
+        <p>Score: <span id="score">0</span></p>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
+body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; }
+#game-board { display: flex; flex-wrap: wrap; width: 620px; margin-top: 20px; }
+.card { width: 100px; height: 100px; margin: 5px; position: relative; cursor: pointer; border: 2px solid #ccc; }
+.card img { width: 100%; height: 100%; display: none; object-fit: cover; }
+.card.flipped img { display: block; }
+.card.matched { border: 2px solid blue; background-color: lightblue; }
+#cauldron-container { position: relative; margin-top: 20px; width: 500px; height: 300px; }
+#cauldron { width: 100%; height: auto; }
+.cauldron-slot { width: 50px; height: 50px; position: absolute; top: 50%; transform: translateY(-50%); border: none; }
+.cauldron-slot img { width: 100%; height: 100%; object-fit: cover; }
+.score { margin-top: 10px; }
+const foods = [
+    'https://courses.howcanisay.com.br/wp-content/uploads/2024/05/broccoli.png', 
+    'https://courses.howcanisay.com.br/wp-content/uploads/2024/05/carrots.png', 
+    'https://courses.howcanisay.com.br/wp-content/uploads/2024/05/garlic.png', 
+    'https://courses.howcanisay.com.br/wp-content/uploads/2024/05/hot-water.png', 
+    'https://courses.howcanisay.com.br/wp-content/uploads/2024/05/onions.png', 
+    'https://courses.howcanisay.com.br/wp-content/uploads/2024/05/pasta.png', 
+    'https://courses.howcanisay.com.br/wp-content/uploads/2024/05/peas.png', 
+    'https://courses.howcanisay.com.br/wp-content/uploads/2024/05/peppers.png', 
+    'https://courses.howcanisay.com.br/wp-content/uploads/2024/05/potatoes.png', 
+    'https://courses.howcanisay.com.br/wp-content/uploads/2024/05/sausages.png', 
+    'https://courses.howcanisay.com.br/wp-content/uploads/2024/05/salt-and-pepper.png', 
+    'https://courses.howcanisay.com.br/wp-content/uploads/2024/05/tomatoes.png'
+];
+const fire = 'https://courses.howcanisay.com.br/wp-content/uploads/2024/05/fire.png';
+const magicStone = 'https://courses.howcanisay.com.br/wp-content/uploads/2024/05/magic-stone.png';
+let cards = [];
+let flippedCards = [];
+let score = 0;
+let fireCount = 0;
+let removedFires = [];
+
+// Create pairs of food cards
+for (let i = 0; i < foods.length; i++) {
+    cards.push({ type: 'food', value: foods[i] });
+    cards.push({ type: 'food', value: foods[i] });
+}
+
+// Add fire cards
+for (let i = 0; i < 10; i++) {
+    cards.push({ type: 'fire', value: fire });
+}
+
+// Add two magic stone cards
+for (let i = 0; i < 2; i++) {
+    cards.push({ type: 'magic', value: magicStone });
+}
+
+// Shuffle cards
+cards = cards.sort(() => 0.5 - Math.random());
+
+const gameBoard = document.getElementById('game-board');
+const cauldronContainer = document.getElementById('cauldron-container');
+const scoreElement = document.getElementById('score');
+
+// Initialize the game
+function initializeGame() {
+    gameBoard.innerHTML = ''; // Clear the game board before initializing
+    // Create card elements
+    cards.forEach((card, index) => {
+        const cardElement = document.createElement('div');
+        cardElement.classList.add('card');
+        cardElement.dataset.index = index;
+
+        const cardImage = document.createElement('img');
+        cardImage.src = card.value;
+        cardElement.appendChild(cardImage);
+
+        cardElement.addEventListener('click', () => flipCard(cardElement));
+        gameBoard.appendChild(cardElement);
+    });
+}
+
+function flipCard(cardElement) {
+    if (!cardElement.classList.contains('flipped') && !cardElement.classList.contains('matched') && flippedCards.length < 2) {
+        cardElement.classList.add('flipped');
+        flippedCards.push(cardElement);
+
+        if (cards[cardElement.dataset.index].type === 'fire') {
+            fireCount++;
+            updateCauldron(cardElement);
+            const otherCard = flippedCards.find(card => card !== cardElement);
+            if (otherCard) {
+                setTimeout(() => {
+                    otherCard.classList.remove('flipped');
+                    flippedCards = [];
+                }, 500);
+            } else {
+                flippedCards = [];
+            }
+        } else if (flippedCards.length === 2) {
+            setTimeout(checkMatch, 500);
+        }
+    }
+}
+
+function checkMatch() {
+    const [card1, card2] = flippedCards;
+    const card1Index = card1.dataset.index;
+    const card2Index = card2.dataset.index;
+
+    if (cards[card1Index].value === cards[card2Index].value) {
+        if (cards[card1Index].type === 'magic') {
+            restoreFireToGame();
+        } else {
+            score++;
+            scoreElement.textContent = score;
+        }
+        card1.classList.add('matched');
+        card2.classList.add('matched');
+        flippedCards = [];
+    } else {
+        setTimeout(() => {
+            card1.classList.remove('flipped');
+            card2.classList.remove('flipped');
+            flippedCards = [];
+        }, 1000);
+    }
+
+    if (fireCount === 10) {
+        alert('You lose! Too much fire!');
+        resetGame();
+    }
+
+    if (score === foods.length) {
+        alert('You win! All pairs found!');
+        resetGame();
+    }
+}
+
+function updateCauldron(cardElement) {
+    const slot = document.createElement('div');
+    slot.classList.add('cauldron-slot');
+    slot.style.left = `${(fireCount - 1) * 50}px`;
+    const fireImage = document.createElement('img');
+    fireImage.src = fire;
+    slot.appendChild(fireImage);
+    cauldronContainer.appendChild(slot);
+    removedFires.push(cardElement);
+    setTimeout(() => {
+        cardElement.classList.remove('flipped');
+        cardElement.style.visibility = 'hidden';
+    }, 500);
+}
+
+function restoreFireToGame() {
+    const lastFire = removedFires.pop();
+    if (lastFire) {
+        cauldronContainer.removeChild(cauldronContainer.lastChild);
+        fireCount--;
+        lastFire.style.visibility = 'visible';
+        lastFire.classList.remove('flipped');
+    }
+}
+
+function resetGame() {
+    cards = cards.sort(() => 0.5 - Math.random());
+    flippedCards = [];
+    score = 0;
+    fireCount = 0;
+    removedFires = [];
+    scoreElement.textContent = score;
+
+    gameBoard.innerHTML = '';
+    document.querySelectorAll('.cauldron-slot').forEach(slot => slot.remove());
+
+    initializeGame();
+}
+
+// Initialize the game when the page loads
+window.onload = initializeGame;
